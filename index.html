@@ -8,15 +8,10 @@
     <!-- PWA -->
     <link rel="manifest" href="/manifest.json" />
     <meta name="theme-color" content="#1D9E75" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Family Fit" />
-    <link rel="apple-touch-icon" href="/icon-192.png" />
-
-    <!-- OG / share -->
-    <meta property="og:title"       content="Family Fit" />
-    <meta property="og:description" content="Family fitness challenge tracker" />
-    <meta property="og:image"       content="/icon-512.png" />
+    <link rel="apple-touch-icon" href="/icon-192.svg" />
 
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏆</text></svg>" />
   </head>
@@ -24,10 +19,9 @@
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
     <script>
-      // Register service worker
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js').catch(console.error)
+          navigator.serviceWorker.register('/sw.js').catch(() => {})
         })
       }
     </script>
