@@ -4,8 +4,6 @@ import {
   createChallenge, updateChallengeMembers, archiveChallenge,
 } from '../lib/queries'
 import Avatar from '../components/Avatar'
-import StravaConnect from '../components/StravaConnect'
-import { usePushNotifications } from '../hooks/usePushNotifications'
 
 const MEMBER_COLORS = [
   '#1D9E75','#7F77DD','#D85A30','#378ADD','#D4537E','#BA7517','#639922','#888780',
@@ -25,6 +23,80 @@ const BLANK_FORM = {
   member_ids: [],
 }
 
+// Push notification toggle — wrapped separately so errors don't crash the page
+function PushToggle({ member }) {
+  const [subscribed, setSubscribed] = useState(false)
+  const [loading,    setLoading]    = useState(false)
+  const [supported,  setSupported]  = useState(false)
+
+  useEffect(() => {
+    try {
+      const ok = 'serviceWorker' in navigator && 'PushManager' in window
+      setSupported(ok)
+      if (ok) {
+        navigator.serviceWorker.ready.then(reg =>
+          reg.pushManager.getSubscription().then(sub => setSubscribed(!!sub))
+        ).catch(() => {})
+      }
+    } catch (e) {
+      setSupported(false)
+    }
+  }, [])
+
+  async function toggle() {
+    setLoading(true)
+    try {
+      const reg  = await navigator.serviceWorker.ready
+      if (subscribed) {
+        const sub = await reg.pushManager.getSubscription()
+        if (sub) await sub.unsubscribe()
+        setSubscribed(false)
+      } else {
+        const vapidKey = import.meta.env.VITE_VAPID_PUBLIC_KEY
+        if (!vapidKey) throw new Error('No VAPID key')
+        const padding  = '='.repeat((4 - vapidKey.length % 4) % 4)
+        const base64   = (vapidKey + padding).replace(/-/g, '+').replace(/_/g, '/')
+        const raw      = atob(base64)
+        const key      = Uint8Array.from([...raw].map(c => c.charCodeAt(0)))
+        const perm     = await Notification.requestPermission()
+        if (perm !== 'granted') { setLoading(false); return }
+        await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key })
+        setSubscribed(true)
+      }
+    } catch (e) {
+      console.error('Push toggle error:', e)
+    }
+    setLoading(false)
+  }
+
+  if (!supported) return null
+
+  return (
+    <div className="rounded-lg border border-gray-100 px-4 py-3 flex items-center gap-3">
+      <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-lg flex-shrink-0">
+        🔔
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-gray-900">Push notifications</p>
+        <p className="text-xs text-gray-400">
+          {subscribed ? "On — you'll hear when others log" : 'Get notified when family logs'}
+        </p>
+      </div>
+      <button
+        onClick={toggle}
+        disabled={loading}
+        className={`text-xs font-medium px-3 py-1.5 rounded-lg transition-colors ${
+          subscribed
+            ? 'border border-gray-200 text-gray-500 hover:border-red-200 hover:text-red-400'
+            : 'bg-brand text-white hover:bg-brand-dark'
+        }`}
+      >
+        {loading ? '…' : subscribed ? 'Turn off' : 'Turn on'}
+      </button>
+    </div>
+  )
+}
+
 export default function ManagePage({ member: activeMember }) {
   const [members,      setMembers]      = useState([])
   const [challenges,   setChallenges]   = useState([])
@@ -34,13 +106,17 @@ export default function ManagePage({ member: activeMember }) {
   const [editingCh,    setEditingCh]    = useState(null)
   const [form,         setForm]         = useState(BLANK_FORM)
   const [saving,       setSaving]       = useState(false)
-
-  const push = usePushNotifications(activeMember)
+  const [loadError,    setLoadError]    = useState(false)
 
   async function load() {
-    const [m, c] = await Promise.all([getMembers(), getChallenges()])
-    setMembers(m)
-    setChallenges(c)
+    try {
+      const [m, c] = await Promise.all([getMembers(), getChallenges()])
+      setMembers(m)
+      setChallenges(c)
+    } catch (e) {
+      console.error('ManagePage load error:', e)
+      setLoadError(true)
+    }
   }
 
   useEffect(() => { load() }, [])
@@ -113,44 +189,23 @@ export default function ManagePage({ member: activeMember }) {
     await load()
   }
 
+  if (loadError) return (
+    <div className="max-w-2xl mx-auto px-4 py-12 text-center text-gray-400">
+      <p className="text-3xl mb-2">⚠️</p>
+      <p className="font-medium">Couldn't load the page</p>
+      <button onClick={() => { setLoadError(false); load() }}
+        className="btn-outline mt-4 mx-auto">Try again</button>
+    </div>
+  )
+
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
 
-      {/* Connections & Notifications */}
+      {/* Connections */}
       <section>
         <h2 className="text-sm font-medium text-gray-400 uppercase tracking-wide mb-3">Connections</h2>
         <div className="card space-y-3">
-          <StravaConnect member={activeMember} />
-
-          {/* Push Notifications */}
-          {push.supported && (
-            <div className="rounded-lg border border-gray-100 px-4 py-3 flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-lg flex-shrink-0">
-                🔔
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900">Push notifications</p>
-                <p className="text-xs text-gray-400">
-                  {push.permission === 'denied'  ? 'Blocked in browser settings' :
-                   push.subscribed               ? 'On — you\'ll hear when others log' :
-                                                   'Get notified when family logs'}
-                </p>
-              </div>
-              {push.permission !== 'denied' && (
-                <button
-                  onClick={push.subscribed ? push.unsubscribe : push.subscribe}
-                  disabled={push.loading}
-                  className={`text-xs font-medium px-3 py-1.5 rounded-lg transition-colors ${
-                    push.subscribed
-                      ? 'border border-gray-200 text-gray-500 hover:border-red-200 hover:text-red-400'
-                      : 'bg-brand text-white hover:bg-brand-dark'
-                  }`}
-                >
-                  {push.loading ? '…' : push.subscribed ? 'Turn off' : 'Turn on'}
-                </button>
-              )}
-            </div>
-          )}
+          <PushToggle member={activeMember} />
         </div>
       </section>
 
@@ -253,7 +308,7 @@ export default function ManagePage({ member: activeMember }) {
             )}
             {editingCh && (
               <p className="text-xs text-gray-400 bg-gray-50 rounded-lg px-3 py-2">
-                Metric, goal, and dates are locked after creation to preserve data. Add or remove participants below.
+                Metric, goal, and dates are locked after creation. Add or remove participants below.
               </p>
             )}
             <div>
