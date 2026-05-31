@@ -6,6 +6,7 @@ import DashboardPage from './pages/DashboardPage'
 import LogPage       from './pages/LogPage'
 import FeedPage      from './pages/FeedPage'
 import ManagePage    from './pages/ManagePage'
+import SettingsPage  from './pages/SettingsPage'
 
 export default function App() {
   const [member, setMember] = useState(() => getActiveMember())
@@ -22,6 +23,7 @@ export default function App() {
       {tab === 'log'       && <LogPage       member={member} />}
       {tab === 'feed'      && <FeedPage      member={member} />}
       {tab === 'manage'    && <ManagePage    member={member} />}
+      {tab === 'settings'  && <SettingsPage  member={member} />}
     </div>
   )
 }
