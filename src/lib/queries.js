@@ -39,6 +39,49 @@ export async function getRoutineSteps(routineName) {
   return data
 }
 
+// All routine metadata (name, description, estimated minutes, category)
+export async function getRoutines() {
+  const { data, error } = await supabase
+    .from('routines')
+    .select('*')
+    .order('name')
+  if (error) throw error
+  return data
+}
+
+// Single routine's metadata by name
+export async function getRoutine(routineName) {
+  const { data, error } = await supabase
+    .from('routines')
+    .select('*')
+    .eq('name', routineName)
+    .maybeSingle()
+  if (error) throw error
+  return data
+}
+
+// Weekly schedule — returns all 7 days with their assigned routine (or null for rest days)
+export async function getWeeklySchedule() {
+  const { data, error } = await supabase
+    .from('routine_schedule')
+    .select('*, routines(name, description, estimated_minutes, category)')
+    .order('day_of_week', { ascending: true })
+  if (error) throw error
+  return data
+}
+
+// Today's scheduled routine, based on the local day of week
+export async function getTodaysRoutine() {
+  const dayOfWeek = new Date().getDay()
+  const { data, error } = await supabase
+    .from('routine_schedule')
+    .select('*, routines(name, description, estimated_minutes, category)')
+    .eq('day_of_week', dayOfWeek)
+    .maybeSingle()
+  if (error) throw error
+  return data
+}
+
 export async function createChallenge({ name, metric, goal, type, starts_at, ends_at, member_ids, created_by }) {
   const { data: ch, error: ce } = await supabase
     .from('challenges')
