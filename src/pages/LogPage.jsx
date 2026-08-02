@@ -1,14 +1,21 @@
 import { useState, useEffect } from 'react'
-import { getChallenges, logActivity, checkAndAwardBadges, getRoutineSteps } from '../lib/queries'
+import {
+  getChallenges, logActivity, checkAndAwardBadges,
+  getRoutineSteps, getTodaysRoutine,
+} from '../lib/queries'
 
 const ACTIVITY_CATEGORIES = {
   'Cardio':      ['Walking','Running','Hiking','Cycling','Rowing','Elliptical','Jump rope','Stair climbing'],
   'Water':       ['Swimming','Kayaking','Paddleboarding','Water aerobics'],
-  'Strength':    ['Strength training','HIIT','CrossFit','Kettlebell','Bodyweight'],
+  'Strength':    ['Strength training','HIIT','CrossFit','Kettlebell','Bodyweight',
+                  'KB Core & Chest Burner','KB Love Handles & Obliques','KB Chest & Arms Toning',
+                  'KB Core + Cardio Circuit','KB Golf Rotational Core'],
   'Flexibility': ['Yoga','Pilates','Stretching','Barre','Golf Mobility Stretch Routine'],
   'Sport':       ['Basketball','Soccer','Tennis','Golf','Volleyball','Pickleball','Skiing','Skating','Martial arts'],
   'Other':       ['Steps only','Walking (treadmill)','Cycling (stationary)','Other'],
 }
+
+const DAY_NAMES = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']
 
 function RoutineChecklist({ routineName }) {
   const [steps, setSteps]     = useState([])
@@ -26,29 +33,80 @@ function RoutineChecklist({ routineName }) {
   if (loading) return <p className="text-xs text-gray-400">Loading routine…</p>
   if (!steps.length) return null
 
-  const totalMinutes = steps.reduce((sum, s) => sum + Number(s.target_minutes), 0)
+  const totalMinutes = steps.reduce((sum, s) => sum + Number(s.target_minutes || 0), 0)
 
   return (
     <div className="rounded-xl border border-gray-100 bg-gray-50 p-3 space-y-2">
       <div className="flex items-center justify-between">
         <p className="text-sm font-medium text-gray-800">Routine checklist</p>
-        <span className="text-xs text-gray-400">~{totalMinutes} min total</span>
+        {totalMinutes > 0 && (
+          <span className="text-xs text-gray-400">~{totalMinutes} min total</span>
+        )}
       </div>
       <ul className="space-y-1.5">
         {steps.map(step => (
-          <li key={step.id} className="flex items-center justify-between text-sm">
-            <span className="text-gray-700">{step.step_order}. {step.name}</span>
+          <li key={step.id} className="flex items-center justify-between text-sm gap-3">
+            <div>
+              <span className="text-gray-700">{step.step_order}. {step.name}</span>
+              {(step.sets || step.reps) && (
+                <span className="text-xs text-gray-400 ml-2">
+                  {step.sets ? `${step.sets} x ` : ''}{step.reps}
+                  {step.rest_seconds ? ` · rest ${step.rest_seconds}s` : ''}
+                </span>
+              )}
+              {step.notes && <p className="text-xs text-gray-400">{step.notes}</p>}
+            </div>
             <a
               href={step.video_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-xs font-medium text-brand hover:underline whitespace-nowrap ml-3"
+              className="text-xs font-medium text-brand hover:underline whitespace-nowrap"
             >
               ▶ Watch
             </a>
           </li>
         ))}
       </ul>
+    </div>
+  )
+}
+
+function TodaysPlanCard({ onSelect }) {
+  const [plan, setPlan]       = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    getTodaysRoutine().then(data => { setPlan(data); setLoading(false) })
+  }, [])
+
+  if (loading) return null
+
+  const dayName = DAY_NAMES[new Date().getDay()]
+  const routine = plan?.routines
+
+  return (
+    <div className="rounded-xl border border-gray-100 bg-white p-3 flex items-center justify-between gap-3">
+      <div>
+        <p className="text-xs text-gray-400">{dayName}'s plan</p>
+        {routine
+          ? (
+            <>
+              <p className="text-sm font-medium text-gray-800">{routine.name}</p>
+              <p className="text-xs text-gray-500">{routine.description}</p>
+            </>
+          )
+          : <p className="text-sm font-medium text-gray-800">Rest day — recovery or a light walk</p>
+        }
+      </div>
+      {routine && (
+        <button
+          type="button"
+          onClick={() => onSelect(routine.name)}
+          className="btn text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:border-brand hover:text-brand whitespace-nowrap"
+        >
+          Select
+        </button>
+      )}
     </div>
   )
 }
@@ -82,6 +140,9 @@ export default function LogPage({ member }) {
 
   const activeCh      = challenges.find(c => c.id === form.challenge_id)
   const isStepChallenge = activeCh?.metric === 'steps'
+
+  const isRoutineType = form.type === 'Golf Mobility Stretch Routine'
+    || form.type.startsWith('KB ')
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -120,7 +181,9 @@ export default function LogPage({ member }) {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6">
+    <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
+      <TodaysPlanCard onSelect={(routineName) => set('type', routineName)} />
+
       <form onSubmit={handleSubmit} className="card space-y-4">
         <div>
           <h2 className="font-medium text-gray-900">Log an activity</h2>
@@ -149,9 +212,7 @@ export default function LogPage({ member }) {
           </select>
         </div>
 
-        {form.type === 'Golf Mobility Stretch Routine' && (
-          <RoutineChecklist routineName="Golf Mobility Stretch Routine" />
-        )}
+        {isRoutineType && <RoutineChecklist routineName={form.type} />}
 
         <div className="grid grid-cols-2 gap-3">
           <div>
@@ -205,7 +266,7 @@ export default function LogPage({ member }) {
       </form>
 
       {isStepChallenge && (
-        <p className="text-xs text-gray-400 mt-3 text-center">
+        <p className="text-xs text-gray-400 text-center">
           Tip: entering distance auto-estimates steps (~2,100 per mile)
         </p>
       )}
