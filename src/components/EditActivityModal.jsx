@@ -5,7 +5,7 @@ const ACTIVITY_TYPES = [
   'Walking','Running','Hiking','Cycling','Swimming',
   'Elliptical','Yoga','Strength training','Rowing',
   'HIIT','Pilates','Dance','Basketball','Soccer',
-  'Tennis','Golf','Skiing','Skating','Steps only','Other',
+  'Tennis','Golf','Golf Mobility Stretch Routine','Skiing','Skating','Steps only','Other',
 ]
 
 export default function EditActivityModal({ activity, onClose, onSaved }) {
