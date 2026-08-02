@@ -16,6 +16,7 @@ const ACTIVITY_CATEGORIES = {
 }
 
 const DAY_NAMES = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']
+const STRETCH_ROUTINE = 'Golf Mobility Stretch Routine'
 
 function RoutineChecklist({ routineName }) {
   const [steps, setSteps]     = useState([])
@@ -81,32 +82,51 @@ function TodaysPlanCard({ onSelect }) {
 
   if (loading) return null
 
-  const dayName = DAY_NAMES[new Date().getDay()]
-  const routine = plan?.routines
+  const dayName   = DAY_NAMES[new Date().getDay()]
+  const kbRoutine = plan?.routines // may be null on rest days — that's expected
 
   return (
-    <div className="rounded-xl border border-gray-100 bg-white p-3 flex items-center justify-between gap-3">
-      <div>
-        <p className="text-xs text-gray-400">{dayName}'s plan</p>
-        {routine
-          ? (
-            <>
-              <p className="text-sm font-medium text-gray-800">{routine.name}</p>
-              <p className="text-xs text-gray-500">{routine.description}</p>
-            </>
-          )
-          : <p className="text-sm font-medium text-gray-800">Rest day — recovery or a light walk</p>
-        }
-      </div>
-      {routine && (
+    <div className="rounded-xl border border-gray-100 bg-white p-3 space-y-3">
+      <p className="text-xs text-gray-400">{dayName}'s plan</p>
+
+      {/* Daily stretch — shown every day regardless of the KB schedule */}
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-medium text-gray-800">🧘 {STRETCH_ROUTINE}</p>
+          <p className="text-xs text-gray-500">Daily — anytime, or as a warm-up before KB work</p>
+        </div>
         <button
           type="button"
-          onClick={() => onSelect(routine.name)}
+          onClick={() => onSelect(STRETCH_ROUTINE)}
           className="btn text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:border-brand hover:text-brand whitespace-nowrap"
         >
           Select
         </button>
-      )}
+      </div>
+
+      {/* KB routine — only on Mon/Wed/Fri, otherwise rest from strength work */}
+      <div className="flex items-center justify-between gap-3 border-t border-gray-100 pt-3">
+        <div>
+          {kbRoutine
+            ? (
+              <>
+                <p className="text-sm font-medium text-gray-800">💪 {kbRoutine.name}</p>
+                <p className="text-xs text-gray-500">{kbRoutine.description}</p>
+              </>
+            )
+            : <p className="text-sm text-gray-500">No kettlebell routine today — rest from strength work</p>
+          }
+        </div>
+        {kbRoutine && (
+          <button
+            type="button"
+            onClick={() => onSelect(kbRoutine.name)}
+            className="btn text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:border-brand hover:text-brand whitespace-nowrap"
+          >
+            Select
+          </button>
+        )}
+      </div>
     </div>
   )
 }
@@ -141,8 +161,7 @@ export default function LogPage({ member }) {
   const activeCh      = challenges.find(c => c.id === form.challenge_id)
   const isStepChallenge = activeCh?.metric === 'steps'
 
-  const isRoutineType = form.type === 'Golf Mobility Stretch Routine'
-    || form.type.startsWith('KB ')
+  const isRoutineType = form.type === STRETCH_ROUTINE || form.type.startsWith('KB ')
 
   async function handleSubmit(e) {
     e.preventDefault()
