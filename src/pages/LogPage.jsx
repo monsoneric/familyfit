@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { getChallenges, logActivity, checkAndAwardBadges } from '../lib/queries'
+import { getChallenges, logActivity, checkAndAwardBadges, getRoutineSteps } from '../lib/queries'
 
 const ACTIVITY_CATEGORIES = {
   'Cardio':      ['Walking','Running','Hiking','Cycling','Rowing','Elliptical','Jump rope','Stair climbing'],
@@ -8,6 +8,49 @@ const ACTIVITY_CATEGORIES = {
   'Flexibility': ['Yoga','Pilates','Stretching','Barre','Golf Mobility Stretch Routine'],
   'Sport':       ['Basketball','Soccer','Tennis','Golf','Volleyball','Pickleball','Skiing','Skating','Martial arts'],
   'Other':       ['Steps only','Walking (treadmill)','Cycling (stationary)','Other'],
+}
+
+function RoutineChecklist({ routineName }) {
+  const [steps, setSteps]     = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let active = true
+    setLoading(true)
+    getRoutineSteps(routineName).then(data => {
+      if (active) { setSteps(data ?? []); setLoading(false) }
+    })
+    return () => { active = false }
+  }, [routineName])
+
+  if (loading) return <p className="text-xs text-gray-400">Loading routine…</p>
+  if (!steps.length) return null
+
+  const totalMinutes = steps.reduce((sum, s) => sum + Number(s.target_minutes), 0)
+
+  return (
+    <div className="rounded-xl border border-gray-100 bg-gray-50 p-3 space-y-2">
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-medium text-gray-800">Routine checklist</p>
+        <span className="text-xs text-gray-400">~{totalMinutes} min total</span>
+      </div>
+      <ul className="space-y-1.5">
+        {steps.map(step => (
+          <li key={step.id} className="flex items-center justify-between text-sm">
+            <span className="text-gray-700">{step.step_order}. {step.name}</span>
+            <a
+              href={step.video_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs font-medium text-brand hover:underline whitespace-nowrap ml-3"
+            >
+              ▶ Watch
+            </a>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
 }
 
 export default function LogPage({ member }) {
@@ -105,6 +148,10 @@ export default function LogPage({ member }) {
             ))}
           </select>
         </div>
+
+        {form.type === 'Golf Mobility Stretch Routine' && (
+          <RoutineChecklist routineName="Golf Mobility Stretch Routine" />
+        )}
 
         <div className="grid grid-cols-2 gap-3">
           <div>
