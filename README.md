@@ -1,6 +1,6 @@
 # Family Fit — Phase 1
 
-A family fitness challenge web app built with React + Vite + Supabase.
+A family fitness challenge health web app built with React + Vite + Supabase.
 
 ---
 
