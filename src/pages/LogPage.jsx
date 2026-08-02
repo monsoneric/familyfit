@@ -5,7 +5,7 @@ const ACTIVITY_CATEGORIES = {
   'Cardio':      ['Walking','Running','Hiking','Cycling','Rowing','Elliptical','Jump rope','Stair climbing'],
   'Water':       ['Swimming','Kayaking','Paddleboarding','Water aerobics'],
   'Strength':    ['Strength training','HIIT','CrossFit','Kettlebell','Bodyweight'],
-  'Flexibility': ['Yoga','Pilates','Stretching','Barre'],
+  'Flexibility': ['Yoga','Pilates','Stretching','Barre','Golf Mobility Stretch Routine'],
   'Sport':       ['Basketball','Soccer','Tennis','Golf','Volleyball','Pickleball','Skiing','Skating','Martial arts'],
   'Other':       ['Steps only','Walking (treadmill)','Cycling (stationary)','Other'],
 }
