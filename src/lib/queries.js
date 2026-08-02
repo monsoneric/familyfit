@@ -28,6 +28,17 @@ export async function getChallenges({ includeArchived = false } = {}) {
   return data
 }
 
+export async function getRoutineSteps(routineName) {
+  const { data, error } = await supabase
+    .from('routine_steps')
+    .select('*')
+    .eq('routine_name', routineName)
+    .order('step_order', { ascending: true })
+
+  if (error) throw error
+  return data
+}
+
 export async function createChallenge({ name, metric, goal, type, starts_at, ends_at, member_ids, created_by }) {
   const { data: ch, error: ce } = await supabase
     .from('challenges')
